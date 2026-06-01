@@ -49,38 +49,38 @@ export default function App() {
       <header style={{
         background: 'linear-gradient(135deg, #0d2240 0%, #163459 100%)',
         borderBottom: '2px solid rgba(201,162,39,0.4)',
-        padding: '10px 20px',
+        padding: '8px 14px',
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
+        gap: 10,
         flexShrink: 0,
         zIndex: 10,
         boxShadow: '0 2px 16px rgba(0,0,0,0.3)',
       }}>
         {/* Logo / Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div style={{
-            width: 44, height: 44,
+            width: 36, height: 36,
             background: 'linear-gradient(135deg, #c9a227, #e8bf4b)',
-            borderRadius: 10,
+            borderRadius: 8,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24,
+            fontSize: 20,
             boxShadow: '0 2px 10px rgba(201,162,39,0.4)',
           }}>
             ⛳
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2 }}>
               81ST U.S. WOMEN'S OPEN
             </div>
-            <div style={{ fontSize: 10.5, color: '#c9a227', fontWeight: 600, letterSpacing: 0.5 }}>
+            <div style={{ fontSize: 9.5, color: '#c9a227', fontWeight: 600, letterSpacing: 0.5 }}>
               THE RIVIERA COUNTRY CLUB · JUNE 4–7, 2026
             </div>
           </div>
         </div>
 
         {/* Divider */}
-        <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 30, background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
 
         {/* Search */}
         <div style={{ flex: 1, position: 'relative', maxWidth: 420 }}>
@@ -161,11 +161,11 @@ export default function App() {
           )}
         </div>
 
-        {/* Right info */}
-        <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
+        {/* Right info — hidden on small screens via inline media */}
+        <div className="header-right-info" style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: 10, color: '#7a8fa8', lineHeight: 1.6 }}>
             <div>🏆 Presented by Ally</div>
-            <div>📡 Connect to U.S. Open Fan Wi-Fi</div>
+            <div>📡 Free Wi-Fi on site</div>
           </div>
         </div>
       </header>
@@ -192,8 +192,8 @@ export default function App() {
           onFilter={setAmenityFilter}
         />
 
-        {/* Map credit badge */}
-        <div style={{
+        {/* Map credit badge — desktop only */}
+        <div className="header-right-info" style={{
           position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
           zIndex: 20, pointerEvents: 'none',
         }}>
@@ -205,27 +205,10 @@ export default function App() {
             fontSize: 11.5, color: '#cdd8e8', fontWeight: 500,
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            <span>🛰</span><span>Live satellite view · Riviera Country Club</span>
+            <span>⛳</span><span>Tap any marker for details · Chat to ask questions</span>
           </div>
         </div>
 
-        {/* Instruction hint (only when nothing selected) */}
-        {!selected && (
-          <div style={{
-            position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(13,34,64,0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(201,162,39,0.2)',
-            borderRadius: 20,
-            padding: '6px 16px',
-            fontSize: 12,
-            color: '#9aa5b4',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-          }}>
-            Click any marker to see details · Chat button → Ask questions
-          </div>
-        )}
       </div>
 
       {/* ── CHAT ─────────────────────────────────────────────── */}

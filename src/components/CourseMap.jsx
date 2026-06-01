@@ -120,8 +120,9 @@ export default function CourseMap({ onSelect, selected, filter }) {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <svg
-        viewBox="0 0 1000 720"
-        style={{ width: '100%', height: '100%', display: 'block' }}
+        viewBox="200 130 660 600"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', background: 'url(#bgGrad)' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>

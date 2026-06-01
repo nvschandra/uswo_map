@@ -27,6 +27,11 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Mobile: hide non-essential header items */
+@media (max-width: 600px) {
+  .header-right-info { display: none !important; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
