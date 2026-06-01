@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>USWO 2026 – Hole 1 POC</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue-dark:  #0e2a5c;
+    --blue-mid:   #1a3d8a;
+    --blue-light: #2450a8;
+    --green-rough:#2a6e3a;
+    --green-fair: #3fa056;
+    --green-grn:  #5ec46e;
+    --sand:       #e0b98a;
+    --sand2:      #d4a878;
+    --path:       rgba(255,255,255,0.25);
+    --gold:       #c9a227;
+    --white:      #ffffff;
+  }
+  html, body { height: 100%; background: var(--blue-dark); font-family: 'Inter', sans-serif; color: var(--white); overflow: hidden; }
+
+  /* ── HEADER ──────────────────────────────────────────── */
+  header {
+    background: linear-gradient(135deg, #0a1e44, #162e62);
+    border-bottom: 2px solid rgba(201,162,39,0.5);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+  .logo { font-size: 24px; }
+  .title-block { line-height: 1.25; }
+  .title-block h1 { font-size: 12px; font-weight: 800; letter-spacing: .5px; }
+  .title-block p  { font-size: 9.5px; color: var(--gold); font-weight: 600; letter-spacing: .4px; }
+  .badge {
+    margin-left: auto;
+    background: rgba(201,162,39,0.15);
+    border: 1px solid rgba(201,162,39,0.4);
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; color: var(--gold); font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* ── MAP CANVAS ───────────────────────────────────────── */
+  #map-wrap {
+    position: relative;
+    flex: 1;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+  svg#map {
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* ── INFO PANEL ───────────────────────────────────────── */
+  #panel {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: min(88vw, 320px);
+    background: rgba(8,20,50,0.97);
+    backdrop-filter: blur(14px);
+    border-left: 1px solid rgba(201,162,39,0.35);
+    padding: 20px 18px 24px;
+    display: flex; flex-direction: column; gap: 14px;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+    z-index: 50;
+    overflow-y: auto;
+  }
+  #panel.open { transform: translateX(0); }
+  #panel-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+    color: #fff; font-size: 18px; line-height: 32px; text-align: center;
+    cursor: pointer;
+  }
+  .panel-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); }
+  .panel-hole { display: flex; gap: 12px; align-items: center; }
+  .hole-num-big {
+    width: 58px; height: 58px; border-radius: 50%;
+    background: var(--blue-dark); border: 3px solid var(--white);
+    font-size: 26px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .hole-meta h2 { font-size: 20px; font-weight: 800; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chip {
+    border-radius: 6px; padding: 2px 9px;
+    font-size: 11px; font-weight: 600;
+  }
+  .chip-par  { background: rgba(74,144,217,0.2); color:#7ec8f8; border:1px solid rgba(74,144,217,0.3); }
+  .chip-yds  { background: rgba(155,165,180,0.15); color:#aab; border:1px solid rgba(155,165,180,0.25); }
+  .panel-desc { font-size: 13.5px; line-height: 1.65; color: #cdd8e8; }
+  .panel-nearby h3 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #7a8fa8; margin-bottom: 8px; }
+  .nearby-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: #c0cfe0; }
+  .nearby-icon { font-size: 16px; width: 24px; text-align: center; }
+
+  /* ── CHAT ─────────────────────────────────────────────── */
+  #chat-btn {
+    position: fixed; bottom: 22px; right: 22px;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--gold); border: none;
+    font-size: 22px; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; transition: transform .2s;
+  }
+  #chat-btn:active { transform: scale(.92); }
+
+  #chat-box {
+    position: fixed; bottom: 86px; right: 16px;
+    width: min(92vw, 340px);
+    background: rgba(8,20,50,0.97);
+    border: 1px solid rgba(201,162,39,0.35);
+    border-radius: 16px;
+    box-shadow: 0 8px 36px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+    max-height: 420px;
+    z-index: 99;
+    overflow: hidden;
+    transform: scale(.92) translateY(10px);
+    opacity: 0;
+    pointer-events: none;
+    transition: all .22s cubic-bezier(.4,0,.2,1);
+  }
+  #chat-box.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
+
+  .chat-header {
+    padding: 12px 14px; background: rgba(10,30,60,0.9);
+    border-bottom: 1px solid rgba(201,162,39,0.2);
+    display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  }
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    min-height: 120px;
+  }
+  .msg { padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.55; max-width: 88%; }
+  .msg-bot { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.09); align-self: flex-start; border-radius: 4px 12px 12px 12px; }
+  .msg-user { background: linear-gradient(135deg,#1a4a7a,#122d52); border:1px solid rgba(74,144,217,0.3); align-self: flex-end; border-radius: 12px 12px 4px 12px; }
+  .msg b { color: #e8bf4b; }
+  .chat-input-row {
+    display: flex; gap: 8px; padding: 10px 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,28,52,0.8);
+  }
+  .chat-input-row input {
+    flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 8px 12px; color: #fff; font-size: 13px; font-family: inherit;
+    outline: none;
+  }
+  .chat-input-row button {
+    background: var(--gold); border: none; border-radius: 10px;
+    width: 36px; height: 36px; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Pulse ring on active hole marker */
+  @keyframes pulse { 0%{r:18;opacity:.6} 100%{r:30;opacity:0} }
+  .pulse-ring { animation: pulse 1.6s ease-out infinite; }
+</style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">⛳</div>
+  <div class="title-block">
+    <h1>81ST U.S. WOMEN'S OPEN</h1>
+    <p>THE RIVIERA COUNTRY CLUB · JUNE 4–7, 2026</p>
+  </div>
+  <div class="badge">Hole 1 POC</div>
+</header>
+
+<!-- MAP -->
+<div id="map-wrap">
+<svg id="map" viewBox="0 0 480 680" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="bg" cx="45%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1a3d8a"/>
+      <stop offset="100%" stop-color="#0b1e45"/>
+    </radialGradient>
+    <filter id="sh">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
+    </filter>
+    <filter id="sh2">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity=".6"/>
+    </filter>
+    <!-- Walking path style -->
+    <marker id="arr" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
+      <circle cx="2.5" cy="2.5" r="1.5" fill="rgba(255,255,255,0.4)"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="480" height="680" fill="url(#bg)"/>
+
+  <!-- ── HOLE 1 — Par 4, 434 yds, upper right area ───────────── -->
+  <!-- Rough / course boundary for hole 1 corridor -->
+  <path d="M 290,60 C 340,58 390,72 410,100 C 428,125 420,160 405,188
+           C 390,215 368,232 345,245 C 322,258 298,262 278,258
+           C 255,254 238,240 228,222 C 218,205 220,182 232,162
+           C 244,142 265,128 278,110 C 288,95 285,65 290,60 Z"
+        fill="#1d5e2e" opacity="0.9"/>
+
+  <!-- Fairway (lighter green strip) — slight dogleg right -->
+  <path d="M 298,85 C 318,84 342,92 355,112 C 368,130 362,156 350,175
+           C 338,193 318,205 300,210 C 282,215 264,208 254,196
+           C 244,184 244,164 252,148 C 260,132 275,120 286,108 C 293,99 295,88 298,85 Z"
+        fill="#3fa056" opacity="0.88"/>
+
+  <!-- Fairway highlight (center strip lighter) -->
+  <path d="M 306,92 C 320,91 338,99 348,116 C 358,132 354,154 343,170
+           C 333,185 315,196 300,200 C 287,203 273,197 266,187
+           C 259,177 260,162 266,150 C 273,138 284,130 292,120 C 299,111 303,95 306,92 Z"
+        fill="#50b868" opacity="0.6"/>
+
+  <!-- Bunker left of fairway (mid approach) -->
+  <ellipse cx="248" cy="178" rx="18" ry="11" fill="#d4a878" opacity="0.85" transform="rotate(-20,248,178)"/>
+  <ellipse cx="245" cy="175" rx="12" ry="7" fill="#e0b98a" opacity="0.7" transform="rotate(-20,245,175)"/>
+
+  <!-- Bunker right of green -->
+  <ellipse cx="354" cy="198" rx="14" ry="9" fill="#d4a878" opacity="0.85" transform="rotate(15,354,198)"/>
+  <ellipse cx="356" cy="195" rx="9" ry="6" fill="#e0b98a" opacity="0.7" transform="rotate(15,356,195)"/>
+
+  <!-- Greenside bunker left -->
+  <ellipse cx="265" cy="222" rx="12" ry="7" fill="#d4a878" opacity="0.8" transform="rotate(-10,265,222)"/>
+
+  <!-- The GREEN -->
+  <ellipse cx="298" cy="235" rx="28" ry="20" fill="#5ec46e" opacity="0.95"/>
+  <ellipse cx="298" cy="235" rx="28" ry="20" fill="none" stroke="#82d990" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- Pin flag on green -->
+  <line x1="298" y1="217" x2="298" y2="235" stroke="white" stroke-width="1.5" opacity="0.7"/>
+  <polygon points="298,217 308,221 298,225" fill="#e74c3c" opacity="0.9"/>
+
+  <!-- Walking paths -->
+  <path d="M 290,60 C 290,75 292,82 296,90" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+  <path d="M 298,235 C 298,255 295,268 285,278" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+  <path d="M 326,238 C 340,240 355,235 362,225" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+
+  <!-- TEE BOX area -->
+  <rect x="280" y="55" width="24" height="14" rx="3" fill="#5ec46e" opacity="0.7"/>
+  <text x="292" y="65" text-anchor="middle" fill="white" font-size="7" font-weight="600" opacity="0.8">TEE</text>
+
+  <!-- Gate 1 indicator (top, showing context) -->
+  <rect x="210" y="30" width="54" height="20" rx="4" fill="#c9a227" filter="url(#sh2)"/>
+  <text x="237" y="44" text-anchor="middle" fill="#0a1e44" font-size="9" font-weight="800">GATE 1</text>
+
+  <!-- VV marker nearby -->
+  <circle cx="355" cy="35" r="12" fill="#2ECC71" opacity="0.85" filter="url(#sh2)"/>
+  <text x="355" y="39" text-anchor="middle" fill="white" font-size="8" font-weight="800">VV</text>
+
+  <!-- Restroom icon near Gate 1 -->
+  <circle cx="200" cy="60" r="10" fill="#4A90D9bb" filter="url(#sh2)"/>
+  <text x="200" y="64" text-anchor="middle" font-size="10">🚻</text>
+
+  <!-- Ticket Office -->
+  <circle cx="235" cy="60" r="10" fill="#9B59B6bb" filter="url(#sh2)"/>
+  <text x="235" y="64" text-anchor="middle" font-size="10">🎫</text>
+
+  <!-- ── HOLE 1 INTERACTIVE MARKER ────────────────────────── -->
+  <!-- Pulse ring (only shown when this hole is "active") -->
+  <circle id="h1-pulse" cx="292" cy="82" r="18" fill="#fff" opacity="0" class="pulse-ring"/>
+
+  <!-- Hole marker -->
+  <circle id="h1-marker" cx="292" cy="82" r="16"
+          fill="#0a1e44" stroke="white" stroke-width="2.5"
+          filter="url(#sh)" style="cursor:pointer"/>
+  <text id="h1-label" x="292" y="87" text-anchor="middle"
+        fill="white" font-size="14" font-weight="800"
+        pointer-events="none">1</text>
+
+  <!-- ── NEXT HOLE GHOST (context) ──────────────────────────── -->
+  <text x="340" y="310" text-anchor="middle" fill="rgba(255,255,255,0.12)" font-size="13" font-weight="700">→ HOLE 2</text>
+
+  <!-- Label: Hole 1 name tag -->
+  <rect x="310" y="70" width="80" height="22" rx="5" fill="rgba(8,20,50,0.75)" stroke="rgba(201,162,39,0.4)" stroke-width="1"/>
+  <text x="350" y="85" text-anchor="middle" fill="#c9a227" font-size="9.5" font-weight="700">PAR 4 · 434 YDS</text>
+
+  <!-- Compass -->
+  <g transform="translate(38,630)">
+    <circle r="20" fill="rgba(8,20,50,0.85)" stroke="#c9a227" stroke-width="1.5"/>
+    <text y="-7" text-anchor="middle" fill="#c9a227" font-size="10" font-weight="700">N</text>
+    <polygon points="0,-15 3,-4 0,0 -3,-4" fill="#c9a227"/>
+    <polygon points="0,15 3,4 0,0 -3,4" fill="#4a6a8a"/>
+  </g>
+
+  <!-- Scale -->
+  <g transform="translate(370,650)">
+    <line x1="0" y1="6" x2="70" y2="6" stroke="white" stroke-width="1.5" opacity="0.45"/>
+    <line x1="0" y1="2" x2="0" y2="10" stroke="white" stroke-width="1.5" opacity="0.45"/>
+    <line x1="70" y1="2" x2="70" y2="10" stroke="white" stroke-width="1.5" opacity="0.45"/>
+    <text x="35" y="20" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">≈ 150 yds</text>
+  </g>
+
+  <!-- Bottom watermark -->
+  <text x="240" y="672" text-anchor="middle" fill="rgba(201,162,39,0.18)" font-size="11" font-weight="700" letter-spacing="1.5">THE RIVIERA COUNTRY CLUB · JUNE 4–7, 2026</text>
+</svg>
+
+<!-- INFO PANEL -->
+<div id="panel">
+  <div id="panel-close" onclick="closePanel()">×</div>
+  <div class="panel-tag">⛳ Hole Info</div>
+
+  <div class="panel-hole">
+    <div class="hole-num-big" id="p-num">1</div>
+    <div class="hole-meta">
+      <h2 id="p-title">Hole 1</h2>
+      <div class="badges">
+        <span class="chip chip-par">Par 4</span>
+        <span class="chip chip-yds">434 yds</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="panel-desc">
+    The classic opening hole at Riviera — a slight dogleg right that demands
+    a precise tee shot. Bunkers guard the left approach and greenside traps
+    punish anything short-right. The elevated green runs away from most
+    approach angles, making par feel like a birdie.
+  </p>
+
+  <div class="panel-nearby">
+    <h3>Nearby</h3>
+    <div class="nearby-item"><span class="nearby-icon">🚪</span> Gate 1 — main entrance (60 yds north)</div>
+    <div class="nearby-item"><span class="nearby-icon">🏟</span> Grandstand behind the green</div>
+    <div class="nearby-item"><span class="nearby-icon">🚻</span> Restrooms near Gate 1</div>
+    <div class="nearby-item"><span class="nearby-icon">🎫</span> Ticket Office (SeatGeek) — Gate 1</div>
+    <div class="nearby-item"><span class="nearby-icon">👕</span> Merchandise — Gate 1 area</div>
+  </div>
+
+  <div style="margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);font-size:11.5px;color:#4a6a8a;line-height:1.5">
+    Tap the gold chat button to ask questions like "where is the nearest restroom?"
+  </div>
+</div>
+</div><!-- /map-wrap -->
+
+<!-- CHAT -->
+<button id="chat-btn" onclick="toggleChat()">💬</button>
+<div id="chat-box">
+  <div class="chat-header">
+    <span style="font-size:18px">⛳</span>
+    <span>USWO Guide</span>
+    <span style="margin-left:auto;font-size:11px;color:#5a8aaa;font-weight:400">Ask me anything</span>
+  </div>
+  <div class="chat-messages" id="chat-msgs">
+    <div class="msg msg-bot">Welcome! I'm your <b>USWO 2026</b> guide. Tap <b>Hole 1</b> on the map, or ask me anything about the event ⛳</div>
+  </div>
+  <div class="chat-input-row">
+    <input id="chat-in" placeholder="Ask about the event…" onkeydown="if(event.key==='Enter')sendMsg()"/>
+    <button onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<script>
+// ── Panel ─────────────────────────────────────────────────
+const panel = document.getElementById('panel');
+let panelOpen = false;
+
+document.getElementById('h1-marker').addEventListener('click', openHole1);
+document.getElementById('h1-label').addEventListener('click', openHole1);
+
+function openHole1() {
+  panelOpen = true;
+  panel.classList.add('open');
+  // Activate pulse
+  const pulse = document.getElementById('h1-pulse');
+  pulse.style.opacity = '0.5';
+  // Highlight marker
+  document.getElementById('h1-marker').setAttribute('fill','#fff');
+  document.getElementById('h1-label').setAttribute('fill','#0a1e44');
+}
+
+function closePanel() {
+  panelOpen = false;
+  panel.classList.remove('open');
+  document.getElementById('h1-pulse').style.opacity = '0';
+  document.getElementById('h1-marker').setAttribute('fill','#0a1e44');
+  document.getElementById('h1-label').setAttribute('fill','white');
+}
+
+// ── Chat ──────────────────────────────────────────────────
+let chatOpen = false;
+const chatBox = document.getElementById('chat-box');
+const msgs = document.getElementById('chat-msgs');
+const input = document.getElementById('chat-in');
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  chatBox.classList.toggle('open', chatOpen);
+  if (chatOpen) setTimeout(() => input.focus(), 200);
+}
+
+const kb = [
+  { p: ['hole 1','first hole','hole one'], r: 'Hole 1 is a <b>par-4, 434 yards</b> — a slight dogleg right. Bunkers guard the left approach. The elevated green slopes away from most angles. Tap it on the map for full details!' },
+  { p: ['gate','entrance','enter','entry'], r: '<b>Gate 1</b> is the main entrance (north side, off Capri Drive). Gate 2 is nearby for rideshare drop-off. Gate 4 is upper-left, best for Palisades Club guests. All gates open at <b>6:00 AM</b> daily.' },
+  { p: ['restroom','bathroom','toilet','wc','loo'], r: 'Restrooms 🚻 are at 8 locations around the course. The nearest to Hole 1 is <b>right by Gate 1</b>, just north of the opening tee.' },
+  { p: ['food','eat','concession','hungry','snack'], r: 'Food options include: 🌭 Concession stands throughout the course · Village on 18 (free, public) · Champions Pavilion (premium, ticket required) · Hero Pavilion · The 19th Hole bar by Sun Cruiser.' },
+  { p: ['pavilion','hospitality','vip','champions','hero'], r: 'Hospitality areas:\n🥇 <b>Champions Pavilion (CP)</b> — premium dining, near holes 4/9/18\n🎯 <b>Hero Pavilion (HP)</b> — casual, near holes 4/18\n🍹 <b>Palisades Club (PC)</b> — near Gate 4\n🏆 <b>Trophy Club (TC)</b> — near holes 13/14\n🌿 <b>Village on 18 (18G)</b> — FREE with grounds pass!' },
+  { p: ['park','parking','uber','lyft','rideshare','shuttle','bus','transport'], r: 'No public parking on-site. Options:\n🚗 Rideshare — drop off near Gate 2\n🚌 Free shuttle buses from off-site lots\n🚇 Metro Bus to Pacific Palisades' },
+  { p: ['ticket','price','cost','buy','admission'], r: 'Tickets via <b>SeatGeek</b> (official partner). Ticket Office is near Gate 1. Daily grounds passes + premium hospitality upgrades (Champions Pavilion, Palisades Club, etc.) available.' },
+  { p: ['wifi','wi-fi','internet'], r: 'Free Wi-Fi: connect to <b>"U.S. Open Fan Wi-Fi"</b> powered by Cisco. Available near grandstands and hospitality areas.' },
+  { p: ['hello','hi','hey'], r: 'Hey! Welcome to the <b>81st U.S. Women\'s Open</b> at Riviera ⛳ Tap Hole 1 on the map, or ask me about food, gates, parking, hospitality, or any specific hole!' },
+  { p: ['help','what can'], r: 'I can help with: 📍 Locations · 🍔 Food & drinks · 🚻 Restrooms · 🚗 Transport · 🎟 Tickets · ⛳ Holes · ♿ Accessibility · 📡 WiFi · 🏛 Hospitality. Just ask!' },
+];
+
+function sendMsg() {
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  addMsg(q, 'user');
+
+  // Normalize query
+  const norm = q.toLowerCase().replace(/where (is|are|can i find|do i find)/g,'').replace(/\b(the|a|an|is|are|any|some|find|get|show me|tell me|what|how)\b/g,'').trim();
+
+  let best = null, bestScore = 0;
+  for (const entry of kb) {
+    let score = 0;
+    for (const p of entry.p) if (norm.includes(p)) score += p.length;
+    if (score > bestScore) { bestScore = score; best = entry; }
+  }
+
+  setTimeout(() => {
+    const r = best && bestScore > 0
+      ? best.r
+      : "I'm still learning! Try asking about <b>food</b>, <b>restrooms</b>, <b>parking</b>, <b>pavilions</b>, <b>tickets</b>, or <b>WiFi</b>.";
+    addMsg(r, 'bot');
+  }, 380 + Math.random() * 200);
+}
+
+function addMsg(text, role) {
+  const d = document.createElement('div');
+  d.className = `msg msg-${role}`;
+  d.innerHTML = text;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+</script>
+</body>
+</html>
