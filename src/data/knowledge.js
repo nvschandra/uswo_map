@@ -60,9 +60,13 @@ const kb = [
     patterns: ['disability', 'wheelchair', 'accessible', 'mobility', 'ada', 'handicap'],
     response: "The USGA is committed to accessibility. **Disability Services** include:\n- Wheelchair-accessible restrooms at all 8 restroom locations\n- Accessible viewing areas at grandstands (all 4 locations)\n- Complimentary wheelchair/cart transportation — check with the Disability Services desk near Gate 1\n- Hearing loop systems at the leaderboard/scoring areas\n\nFor assistance, contact any marshal or USGA staff member.",
   },
-  // Hospitality areas
+  // Hospitality areas — broad patterns first
   {
-    patterns: ['champions pavilion', 'cp pavilion'],
+    patterns: ['pavilion', 'hospitality', 'vip', 'premium', 'where to sit', 'seating'],
+    response: "There are several **hospitality areas** on the course:\n- 🥇 **Champions Pavilion (CP)** — premium dining, air conditioning, views of 4/9/18 *(ticket upgrade required)*\n- 🎯 **Hero Pavilion (HP)** — casual food, live scoring, views of 4/18 *(ticket upgrade required)*\n- 🍹 **Palisades Club (PC)** — SoCal cuisine, craft cocktails, near Gate 3/4 *(ticket required)*\n- 🏆 **Trophy Club (TC)** — USGA exhibits, dining, near holes 13/14 *(ticket required)*\n- 🌿 **Village on 18 (18G)** — food vendors, fan zone, finishing hole views *(FREE with grounds pass)*\n- 🎪 **Suites on 14 (14G)** — private suites behind the 14th green *(premium ticket)*\n\nTap any of the colored circle markers on the map for details on each!",
+  },
+  {
+    patterns: ['champions pavilion', 'cp'],
     response: "**Champions Pavilion (CP)** is a premium hospitality experience located centrally near holes 4, 9, and 18. Features include:\n- Chef-curated cuisine and premium dining\n- Air-conditioned indoor spaces\n- Premium open bar\n- Private restrooms\n- Stunning views of the 18th green amphitheater\n\nA **Champions Pavilion ticket upgrade** is required in addition to standard grounds admission.",
   },
   {
@@ -70,7 +74,7 @@ const kb = [
     response: "**Hero Pavilion (HP)** offers a great spectator experience near the 4th and 18th holes. It features casual food, beverages, live scoring, and outdoor seating. A **Hero Pavilion ticket** is required.",
   },
   {
-    patterns: ['palisades club', 'pc'],
+    patterns: ['palisades club', 'pc club'],
     response: "**Palisades Club (PC)** is located near Gate 3/4 in the upper-left section. It features Southern California-inspired cuisine, craft cocktails, and a beautiful outdoor lounge with course views. Requires a **Palisades Club hospitality ticket**.",
   },
   {
@@ -78,11 +82,11 @@ const kb = [
     response: "**Trophy Club (TC)** is positioned near holes 13 and 14, featuring USGA trophy displays, historical exhibits, premium dining, and a private bar. Requires a **Trophy Club ticket upgrade**.",
   },
   {
-    patterns: ['village on 18', '18g', '18th village', 'village'],
+    patterns: ['village on 18', '18g', 'village on eighteen', 'village'],
     response: "**Village on 18 (18G)** is a **FREE public fan zone** located in the 18th fairway bowl. It offers:\n- Multiple food vendors\n- Beverage options\n- Sponsor activations\n- Incredible views of the finishing hole\n\nNo upgrade ticket required — just your standard grounds pass!",
   },
   {
-    patterns: ['suites on 14', '14g', 'suites', '14th suite'],
+    patterns: ['suites on 14', '14g', 'suite', '14th'],
     response: "**Suites on 14 (14G)** offers elevated private suite experiences directly behind the 14th green — a dramatic par-3. Features private catering and bar service. Requires a premium **Suites on 14 ticket**.",
   },
   // Experiences
@@ -154,8 +158,18 @@ const kb = [
   },
 ];
 
+// Strip common nav words so "where are the pavilions" → "pavilions"
+function normalize(q) {
+  return q
+    .toLowerCase()
+    .replace(/where (is|are|can i find|do i find|can i get)/g, '')
+    .replace(/\b(the|a|an|is|are|there|any|some|find|get|go to|show me|tell me about|what is|what are|how do i|how to|i need|i want|looking for|i'm looking for)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function getResponse(query) {
-  const q = query.toLowerCase().trim();
+  const q = normalize(query);
 
   // Find best matching entry
   let bestMatch = null;
