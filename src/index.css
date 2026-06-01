@@ -1,0 +1,83 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #0d2240;
+  --navy-light: #163459;
+  --blue: #1a4a8a;
+  --gold: #c9a227;
+  --gold-light: #e8bf4b;
+  --green-dark: #1a5c2a;
+  --green: #2d8a45;
+  --green-light: #3dab57;
+  --white: #ffffff;
+  --gray-100: #f5f7fa;
+  --gray-200: #e8ecf0;
+  --gray-400: #9aa5b4;
+  --gray-700: #3d4f63;
+  --red: #c0392b;
+  --shadow: 0 4px 24px rgba(0,0,0,0.18);
+  --radius: 12px;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--navy);
+  color: var(--white);
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* Markdown-style bold rendering in chat */
+.chat-msg b, .chat-msg strong { color: var(--gold-light); font-weight: 600; }
+
+/* Map tooltip */
+.map-tooltip {
+  pointer-events: none;
+  position: fixed;
+  z-index: 9999;
+  background: rgba(13,34,64,0.96);
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  transform: translate(-50%, -110%);
+  transition: opacity 0.15s;
+}
+
+/* Pulse animation for active markers */
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.marker-pulse {
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+/* Slide-in panels */
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+.panel-in { animation: slideIn 0.25s ease; }
+
+@keyframes fadeUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+.fade-up { animation: fadeUp 0.2s ease; }
+
+/* Chat bubble formatting */
+.chat-bubble {
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
