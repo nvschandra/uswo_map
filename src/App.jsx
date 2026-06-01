@@ -192,35 +192,21 @@ export default function App() {
           onFilter={setAmenityFilter}
         />
 
-        {/* Stats bar (top of map) */}
+        {/* Map credit badge */}
         <div style={{
           position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', gap: 8, zIndex: 20,
+          zIndex: 20, pointerEvents: 'none',
         }}>
-          {[
-            { label: '18 Holes', icon: '⛳' },
-            { label: '3 Gates', icon: '🚪' },
-            { label: 'Free WiFi', icon: '📡' },
-            { label: 'Ally Presenting', icon: '🏆' },
-          ].map(stat => (
-            <div
-              key={stat.label}
-              style={{
-                background: 'rgba(13,34,64,0.85)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(201,162,39,0.2)',
-                borderRadius: 20,
-                padding: '4px 12px',
-                fontSize: 11.5,
-                display: 'flex', alignItems: 'center', gap: 5,
-                color: '#cdd8e8',
-                fontWeight: 500,
-              }}
-            >
-              <span>{stat.icon}</span>
-              <span>{stat.label}</span>
-            </div>
-          ))}
+          <div style={{
+            background: 'rgba(13,34,64,0.85)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(201,162,39,0.25)',
+            borderRadius: 20, padding: '4px 14px',
+            fontSize: 11.5, color: '#cdd8e8', fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span>🛰</span><span>Live satellite view · Riviera Country Club</span>
+          </div>
         </div>
 
         {/* Instruction hint (only when nothing selected) */}
