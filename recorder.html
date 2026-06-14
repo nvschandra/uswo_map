@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversation Recorder</title>
+<style>
+/* ── Design tokens ───────────────────────────────────────────────── */
+:root {
+  --bg:        #f3f3f3;
+  --surface:   #ffffff;
+  --card:      rgba(255,255,255,0.75);
+  --border:    rgba(0,0,0,0.08);
+  --shadow:    rgba(0,0,0,0.12);
+  --txt:       #1a1a1a;
+  --txt2:      #5a5a5a;
+  --accent:    #0078d4;
+  --accent-h:  #106ebe;
+  --red:       #d13438;
+  --green:     #107c10;
+  --orange:    #f7630c;
+  --pulse:     rgba(209,52,56,.25);
+}
+[data-theme=dark] {
+  --bg:        #1c1c1c;
+  --surface:   #2d2d2d;
+  --card:      rgba(50,50,50,.8);
+  --border:    rgba(255,255,255,0.09);
+  --shadow:    rgba(0,0,0,.5);
+  --txt:       #f0f0f0;
+  --txt2:      #9a9a9a;
+  --accent:    #60cdff;
+  --accent-h:  #4cc2ff;
+  --red:       #ff6b6b;
+  --green:     #6ccb5f;
+  --orange:    #ffa940;
+  --pulse:     rgba(255,107,107,.25);
+}
+
+/* ── Reset / base ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* ── Title bar ───────────────────────────────────────────────────── */
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+}
+.titlebar-left { display: flex; align-items: center; gap: 9px; }
+.app-logo {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--accent), #8764b8);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.app-name { font-size: 13px; font-weight: 600; }
+.titlebar-right { display: flex; gap: 4px; }
+.icon-btn {
+  width: 30px; height: 30px;
+  border: none; background: none;
+  border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--txt2);
+  transition: background .15s, color .15s;
+}
+.icon-btn:hover { background: var(--border); color: var(--txt); }
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+.workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Left panel ──────────────────────────────────────────────────── */
+.left {
+  width: 284px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 18px 16px;
+  gap: 22px;
+}
+
+.section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+  color: var(--txt2);
+  margin-bottom: 8px;
+}
+
+/* ── Record control ──────────────────────────────────────────────── */
+.record-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.timer {
+  font-size: 32px;
+  font-weight: 200;
+  letter-spacing: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.rec-btn-wrap { position: relative; }
+.rec-btn {
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  border: none;
+  background: var(--red);
+  color: #fff;
+  font-size: 26px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 18px var(--pulse);
+  transition: transform .18s, box-shadow .18s;
+  position: relative;
+  z-index: 1;
+}
+.rec-btn:hover:not(:disabled) { transform: scale(1.06); box-shadow: 0 6px 24px var(--pulse); }
+.rec-btn:disabled { opacity: .45; cursor: not-allowed; }
+.rec-btn.on { background: #9b0000; }
+.rec-btn.on::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2px solid var(--red);
+  animation: ripple 1.6s ease-in-out infinite;
+}
+@keyframes ripple {
+  0%,100%  { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0; transform: scale(1.18); }
+}
+.status-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--txt2);
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--txt2);
+  flex-shrink: 0;
+}
+.dot.live  { background: var(--red); animation: blink 1s step-end infinite; }
+.dot.proc  { background: var(--orange); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Source selector ─────────────────────────────────────────────── */
+.sources { display: flex; flex-direction: column; gap: 7px; }
+.src-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--bg);
+  transition: border-color .15s, background .15s;
+}
+.src-opt:hover { border-color: var(--accent); }
+.src-opt.active {
+  border-color: var(--accent);
+  background: rgba(0,120,212,.07);
+}
+[data-theme=dark] .src-opt.active { background: rgba(96,205,255,.08); }
+.src-opt input[type=radio] { accent-color: var(--accent); flex-shrink: 0; }
+.src-icon { font-size: 17px; width: 22px; text-align: center; }
+.src-name { font-weight: 500; color: var(--txt); }
+.src-desc { font-size: 11px; color: var(--txt2); margin-top: 1px; }
+
+/* ── Settings ────────────────────────────────────────────────────── */
+.setting { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.setting:last-child { margin-bottom: 0; }
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 12px;
+  color: var(--txt);
+  cursor: pointer;
+  outline: none;
+  max-width: 130px;
+}
+select:focus { border-color: var(--accent); }
+
+/* ── Toggle ──────────────────────────────────────────────────────── */
+.toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.slider::before {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle input:checked + .slider { background: var(--accent); }
+.toggle input:checked + .slider::before { transform: translateX(16px); }
+
+/* ── Info callout ────────────────────────────────────────────────── */
+.callout {
+  background: rgba(0,120,212,.08);
+  border: 1px solid rgba(0,120,212,.2);
+  border-radius: 8px;
+  padding: 10px 11px;
+  font-size: 11.5px;
+  color: var(--txt2);
+  line-height: 1.55;
+}
+[data-theme=dark] .callout { background: rgba(96,205,255,.06); border-color: rgba(96,205,255,.15); }
+.callout strong { color: var(--txt); }
+
+/* ── Right panel (transcript) ────────────────────────────────────── */
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.transcript-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.transcript-title { font-weight: 600; font-size: 13px; }
+.actions { display: flex; gap: 5px; }
+.btn {
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--txt);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  transition: border-color .15s, color .15s, background .15s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,120,212,.05); }
+
+/* ── Transcript body ─────────────────────────────────────────────── */
+.transcript-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--txt2);
+}
+.empty-icon { font-size: 44px; opacity: .3; }
+.empty-head { font-size: 15px; font-weight: 500; }
+.empty-hint { font-size: 12px; opacity: .7; }
+
+.entry {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  align-items: flex-start;
+  transition: background .15s;
+}
+.entry:hover { background: var(--card); }
+.entry-ts {
+  font-size: 11px;
+  color: var(--txt2);
+  flex-shrink: 0;
+  padding-top: 2px;
+  width: 44px;
+  font-variant-numeric: tabular-nums;
+}
+.entry-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  flex: 1;
+}
+.interim { color: var(--txt2); font-style: italic; }
+
+/* ── Visualizer bar ──────────────────────────────────────────────── */
+.viz-bar {
+  height: 44px;
+  padding: 6px 18px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+canvas#viz { width: 100%; height: 100%; display: block; border-radius: 3px; }
+
+/* ── Stats footer ────────────────────────────────────────────────── */
+.stats {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 6px 18px;
+  font-size: 11px;
+  color: var(--txt2);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stat strong { color: var(--txt); }
+.stats-right { margin-left: auto; }
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 11px 15px;
+  box-shadow: 0 8px 28px var(--shadow);
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 300px;
+  z-index: 999;
+  animation: toastIn .2s ease;
+}
+@keyframes toastIn {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Help panel ──────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  animation: fadeIn .15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } }
+.help-box {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 24px 28px;
+  max-width: 460px;
+  width: 90%;
+  box-shadow: 0 20px 60px var(--shadow);
+}
+.help-box h2 { font-size: 16px; margin-bottom: 16px; }
+.help-box h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--txt2); margin: 14px 0 6px; }
+.help-box p, .help-box li { font-size: 13px; color: var(--txt2); line-height: 1.55; }
+.help-box li { margin-left: 16px; margin-bottom: 4px; }
+.help-close {
+  margin-top: 18px;
+  padding: 8px 20px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--txt2); }
+</style>
+</head>
+<body>
+
+<!-- ── Title bar ─────────────────────────────────────────────────── -->
+<div class="titlebar">
+  <div class="titlebar-left">
+    <div class="app-logo">🎙</div>
+    <span class="app-name">Conversation Recorder</span>
+  </div>
+  <div class="titlebar-right">
+    <button class="icon-btn" id="themeBtn" title="Toggle dark mode">🌙</button>
+    <button class="icon-btn" id="helpBtn" title="Help">❓</button>
+  </div>
+</div>
+
+<!-- ── Workspace ─────────────────────────────────────────────────── -->
+<div class="workspace">
+
+  <!-- Left panel -->
+  <div class="left">
+
+    <!-- Record -->
+    <div>
+      <div class="section-label">Recording</div>
+      <div class="record-area">
+        <div class="timer" id="timer">00:00</div>
+        <div class="rec-btn-wrap">
+          <button class="rec-btn" id="recBtn" title="Start / Stop">
+            <span id="recIcon">⏺</span>
+          </button>
+        </div>
+        <div class="status-row">
+          <div class="dot" id="dot"></div>
+          <span id="statusTxt">Ready</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Source -->
+    <div>
+      <div class="section-label">Audio Source</div>
+      <div class="sources">
+        <label class="src-opt active" id="opt-mic">
+          <input type="radio" name="src" value="mic" checked>
+          <span class="src-icon">🎤</span>
+          <div>
+            <div class="src-name">Microphone</div>
+            <div class="src-desc">In-person talk, interviews</div>
+          </div>
+        </label>
+        <label class="src-opt" id="opt-sys">
+          <input type="radio" name="src" value="sys">
+          <span class="src-icon">🖥</span>
+          <div>
+            <div class="src-name">System Audio</div>
+            <div class="src-desc">Zoom, Teams, Meet calls</div>
+          </div>
+        </label>
+        <label class="src-opt" id="opt-both">
+          <input type="radio" name="src" value="both">
+          <span class="src-icon">🔀</span>
+          <div>
+            <div class="src-name">Both</div>
+            <div class="src-desc">Mic + meeting audio</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div>
+      <div class="section-label">Settings</div>
+      <div class="setting">
+        <span>Language</span>
+        <select id="lang">
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="es-ES">Spanish</option>
+          <option value="fr-FR">French</option>
+          <option value="de-DE">German</option>
+          <option value="zh-CN">Chinese</option>
+          <option value="ja-JP">Japanese</option>
+          <option value="pt-BR">Portuguese</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="ar-SA">Arabic</option>
+        </select>
+      </div>
+      <div class="setting">
+        <span>Timestamps</span>
+        <label class="toggle"><input type="checkbox" id="tsOn" checked><span class="slider"></span></label>
+      </div>
+      <div class="setting">
+        <span>Auto-scroll</span>
+        <label class="toggle"><input type="checkbox" id="scrollOn" checked><span class="slider"></span></label>
+      </div>
+      <div class="setting">
+        <span>Continuous mode</span>
+        <label class="toggle"><input type="checkbox" id="contOn" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- Callout tip -->
+    <div class="callout" id="tip">
+      💡 For meeting audio, select <strong>System Audio</strong>.
+      When the share dialog opens, tick <strong>"Share audio"</strong> before clicking Share.
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- Right panel -->
+  <div class="right">
+
+    <div class="transcript-header">
+      <span class="transcript-title">Live Transcript</span>
+      <div class="actions">
+        <button class="btn" id="copyBtn">📋 Copy</button>
+        <button class="btn" id="saveBtn">💾 Save .txt</button>
+        <button class="btn" id="clearBtn">🗑 Clear</button>
+      </div>
+    </div>
+
+    <div class="transcript-body" id="body">
+      <div class="empty" id="empty">
+        <div class="empty-icon">🎙</div>
+        <div class="empty-head">No transcript yet</div>
+        <div class="empty-hint">Press the red button to begin</div>
+      </div>
+    </div>
+
+    <div class="viz-bar">
+      <canvas id="viz"></canvas>
+    </div>
+
+    <div class="stats">
+      <span class="stat">Words: <strong id="words">0</strong></span>
+      <span class="stat">Lines: <strong id="lines">0</strong></span>
+      <span class="stat">Duration: <strong id="dur">0:00</strong></span>
+      <span class="stats-right" id="browserHint">Chrome or Edge required</span>
+    </div>
+
+  </div><!-- /right -->
+</div><!-- /workspace -->
+
+<!-- ── Help overlay ───────────────────────────────────────────────── -->
+<div class="overlay" id="helpOverlay" style="display:none">
+  <div class="help-box">
+    <h2>How to use Conversation Recorder</h2>
+
+    <h3>🎤 Microphone (in-person)</h3>
+    <p>Select <strong>Microphone</strong>, press Record. Grant mic access when prompted. Works immediately — no setup needed.</p>
+
+    <h3>🖥 System Audio (meetings)</h3>
+    <ol>
+      <li>Select <strong>System Audio</strong> and press Record.</li>
+      <li>A screen-share dialog opens — pick any window or the full screen.</li>
+      <li><strong>Check "Share audio"</strong> at the bottom of the dialog before clicking Share.</li>
+      <li>Transcription starts immediately.</li>
+    </ol>
+
+    <h3>🔀 Both (recommended for meetings you're also speaking in)</h3>
+    <p>Captures your voice via mic <em>and</em> the far end via system audio simultaneously.</p>
+
+    <h3>💡 Tips</h3>
+    <ul>
+      <li>Use <strong>Chrome</strong> or <strong>Edge</strong> — other browsers don't support live speech recognition.</li>
+      <li>Click <strong>Save .txt</strong> to export the transcript at any time.</li>
+      <li>System Audio → Share tab audio works best when the meeting is in its own tab.</li>
+    </ul>
+
+    <button class="help-close" id="helpClose">Got it</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let recording   = false;
+let recognition = null;
+let timerRef    = null;
+let secs        = 0;
+let transcript  = [];   // [{ts, text}]
+let interimEl   = null;
+let audioCtx    = null;
+let analyser    = null;
+let animId      = null;
+let openStreams  = [];  // MediaStreams to close on stop
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOM refs
+// ─────────────────────────────────────────────────────────────────────────────
+const recBtn   = document.getElementById('recBtn');
+const recIcon  = document.getElementById('recIcon');
+const timerEl  = document.getElementById('timer');
+const dot      = document.getElementById('dot');
+const statusTx = document.getElementById('statusTxt');
+const body     = document.getElementById('body');
+const emptyEl  = document.getElementById('empty');
+const wordEl   = document.getElementById('words');
+const lineEl   = document.getElementById('lines');
+const durEl    = document.getElementById('dur');
+const tipEl    = document.getElementById('tip');
+const vizCanvas = document.getElementById('viz');
+const vizCtx   = vizCanvas.getContext('2d');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Theme
+// ─────────────────────────────────────────────────────────────────────────────
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
+  themeBtn.textContent = dark ? '🌙' : '☀️';
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Source selector
+// ─────────────────────────────────────────────────────────────────────────────
+const tips = {
+  mic:  '💡 Microphone mode — picks up in-person speech. Grant mic access when prompted.',
+  sys:  '🖥 System Audio — click Record, then in the share dialog tick <strong>"Share audio"</strong> before clicking Share.',
+  both: '🔀 Both sources — captures your voice and the remote audio simultaneously.',
+};
+document.querySelectorAll('.src-opt').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.src-opt').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    tipEl.innerHTML = tips[el.querySelector('input').value];
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timer
+// ─────────────────────────────────────────────────────────────────────────────
+function fmt(s) {
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+function startTimer() {
+  secs = 0;
+  timerEl.textContent = '00:00';
+  timerRef = setInterval(() => { secs++; timerEl.textContent = fmt(secs); durEl.textContent = fmt(secs); }, 1000);
+}
+function stopTimer() { clearInterval(timerRef); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status
+// ─────────────────────────────────────────────────────────────────────────────
+function setStatus(state, label) {
+  dot.className = 'dot' + (state === 'live' ? ' live' : state === 'proc' ? ' proc' : '');
+  statusTx.textContent = label;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Transcript helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function nowStamp() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function addFinal(text) {
+  if (!text.trim()) return;
+  const entry = { ts: nowStamp(), elapsed: secs, text: text.trim() };
+  transcript.push(entry);
+  emptyEl.style.display = 'none';
+
+  const div = document.createElement('div');
+  div.className = 'entry';
+  const tsHtml = document.getElementById('tsOn').checked
+    ? `<span class="entry-ts">${entry.ts}</span>`
+    : `<span class="entry-ts"></span>`;
+  div.innerHTML = `${tsHtml}<span class="entry-text">${esc(entry.text)}</span>`;
+  body.appendChild(div);
+  updateStats();
+  maybeScroll();
+}
+
+function setInterim(text) {
+  if (!interimEl) {
+    interimEl = document.createElement('div');
+    interimEl.className = 'entry';
+    body.appendChild(interimEl);
+  }
+  const tsHtml = document.getElementById('tsOn').checked
+    ? `<span class="entry-ts">${nowStamp()}</span>`
+    : `<span class="entry-ts"></span>`;
+  interimEl.innerHTML = `${tsHtml}<span class="entry-text interim">${esc(text)}…</span>`;
+  maybeScroll();
+}
+
+function clearInterim() {
+  if (interimEl) { interimEl.remove(); interimEl = null; }
+}
+
+function updateStats() {
+  const wc = transcript.reduce((n, e) => n + e.text.split(/\s+/).filter(Boolean).length, 0);
+  wordEl.textContent = wc;
+  lineEl.textContent = transcript.length;
+}
+
+function maybeScroll() {
+  if (document.getElementById('scrollOn').checked) body.scrollTop = body.scrollHeight;
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Speech recognition factory
+// ─────────────────────────────────────────────────────────────────────────────
+function buildRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('❌ Use Chrome or Edge — other browsers don\'t support live transcription.', 'red', 6e3); return null; }
+
+  const r = new SR();
+  r.lang = document.getElementById('lang').value;
+  r.continuous = document.getElementById('contOn').checked;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
+    recBtn.classList.add('on');
+    recIcon.textContent = '⏹';
+    setStatus('live', 'Recording…');
+  };
+
+  r.onresult = e => {
+    let fin = '', itr = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) fin += e.results[i][0].transcript;
+      else itr += e.results[i][0].transcript;
+    }
+    if (fin) { addFinal(fin); clearInterim(); }
+    if (itr) setInterim(itr);
+  };
+
+  r.onerror = e => {
+    if (['no-speech', 'aborted'].includes(e.error)) return;
+    toast(`⚠️ Recognition error: ${e.error}`, 'orange');
+    if (e.error === 'not-allowed') stopAll();
+  };
+
+  r.onend = () => {
+    // auto-restart if still in recording state
+    if (recording) {
+      try { r.start(); } catch(_) {}
+    }
+  };
+
+  return r;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Visualizer
+// ─────────────────────────────────────────────────────────────────────────────
+function startViz(stream) {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 512;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  function draw() {
+    animId = requestAnimationFrame(draw);
+    const W = vizCanvas.offsetWidth, H = vizCanvas.offsetHeight;
+    vizCanvas.width  = W * devicePixelRatio;
+    vizCanvas.height = H * devicePixelRatio;
+    vizCtx.scale(devicePixelRatio, devicePixelRatio);
+
+    analyser.getByteFrequencyData(buf);
+    const style = getComputedStyle(document.documentElement);
+    vizCtx.fillStyle = style.getPropertyValue('--bg').trim();
+    vizCtx.fillRect(0, 0, W, H);
+
+    const bar = W / buf.length * 2.2;
+    vizCtx.fillStyle = style.getPropertyValue('--accent').trim();
+    for (let i = 0, x = 0; i < buf.length; i++, x += bar) {
+      vizCtx.fillRect(x, H - (buf[i] / 255) * H, bar - .5, (buf[i] / 255) * H);
+    }
+  }
+  draw();
+}
+
+function stopViz() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  vizCtx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stream acquisition
+// ─────────────────────────────────────────────────────────────────────────────
+async function getMic() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    toast(`❌ Microphone denied: ${e.message}`, 'red', 5e3);
+    return null;
+  }
+}
+
+async function getSys() {
+  try {
+    // Request display with audio; video is required by the API but we discard it
+    const s = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: { echoCancellation: false, noiseSuppression: false }
+    });
+    s.getVideoTracks().forEach(t => t.stop()); // drop video immediately
+    return s;
+  } catch(e) {
+    if (e.name !== 'NotAllowedError') toast(`❌ Could not capture system audio: ${e.message}`, 'red', 5e3);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Record start / stop
+// ─────────────────────────────────────────────────────────────────────────────
+recBtn.addEventListener('click', async () => {
+  if (recording) { stopAll(); return; }
+  await startAll();
+});
+
+async function startAll() {
+  const src = document.querySelector('input[name=src]:checked').value;
+  let vizStream = null;
+
+  if (src === 'mic' || src === 'both') {
+    const s = await getMic();
+    if (!s && src === 'mic') return;
+    if (s) { openStreams.push(s); vizStream = s; }
+  }
+
+  if (src === 'sys' || src === 'both') {
+    const s = await getSys();
+    if (!s && src === 'sys') return;
+    if (s) {
+      openStreams.push(s);
+      // Play system audio back through speakers (so we hear it) and also
+      // let it feed into an audio element for the visualizer if no mic stream
+      const audioEl = document.createElement('audio');
+      audioEl.srcObject = s;
+      audioEl.muted = false;
+      audioEl.play().catch(() => {});
+      audioEl.id = '__sysAudio';
+      document.body.appendChild(audioEl);
+      if (!vizStream) vizStream = s;
+    }
+  }
+
+  recording = true;
+  if (vizStream) startViz(vizStream);
+  startTimer();
+
+  recognition = buildRecognition();
+  if (recognition) {
+    try { recognition.start(); }
+    catch(e) { toast('⚠️ Could not start recognition: ' + e.message, 'orange'); stopAll(); }
+  }
+}
+
+function stopAll() {
+  recording = false;
+
+  if (recognition) { recognition.stop(); recognition = null; }
+  openStreams.forEach(s => s.getTracks().forEach(t => t.stop()));
+  openStreams = [];
+
+  const sysAud = document.getElementById('__sysAudio');
+  if (sysAud) sysAud.remove();
+
+  stopTimer();
+  stopViz();
+  clearInterim();
+
+  recBtn.classList.remove('on');
+  recIcon.textContent = '⏺';
+  setStatus('', 'Stopped');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action buttons
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('copyBtn').addEventListener('click', () => {
+  if (!transcript.length) { toast('Nothing to copy yet.', 'orange'); return; }
+  const showTs = document.getElementById('tsOn').checked;
+  const txt = transcript.map(e => showTs ? `[${e.ts}] ${e.text}` : e.text).join('\n');
+  navigator.clipboard.writeText(txt)
+    .then(() => toast('✅ Copied to clipboard!', 'green'))
+    .catch(() => {
+      const el = Object.assign(document.createElement('textarea'), { value: txt });
+      document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove();
+      toast('✅ Copied!', 'green');
+    });
+});
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  if (!transcript.length) { toast('Nothing to save yet.', 'orange'); return; }
+
+  const now   = new Date();
+  const stamp = now.toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const showTs = document.getElementById('tsOn').checked;
+  const wc    = transcript.reduce((n,e) => n + e.text.split(/\s+/).filter(Boolean).length, 0);
+
+  let out = `Conversation Transcript\n`;
+  out    += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+  out    += `Duration: ${fmt(secs)}\n`;
+  out    += `Words: ${wc}\n`;
+  out    += '─'.repeat(48) + '\n\n';
+  out    += transcript.map(e => showTs ? `[${e.ts}] ${e.text}` : e.text).join('\n');
+
+  const a = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([out], { type:'text/plain;charset=utf-8' })),
+    download: `transcript_${stamp}.txt`,
+  });
+  a.click();
+  toast('💾 Transcript saved!', 'green');
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!transcript.length) return;
+  if (!confirm('Clear the transcript?')) return;
+  transcript = [];
+  body.innerHTML = '';
+  body.appendChild(emptyEl);
+  emptyEl.style.display = '';
+  updateStats();
+  secs = 0; timerEl.textContent = '00:00'; durEl.textContent = '0:00';
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Help
+// ─────────────────────────────────────────────────────────────────────────────
+const helpOverlay = document.getElementById('helpOverlay');
+document.getElementById('helpBtn').addEventListener('click', () => { helpOverlay.style.display = 'flex'; });
+document.getElementById('helpClose').addEventListener('click', () => { helpOverlay.style.display = 'none'; });
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpOverlay.style.display = 'none'; });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────────────────────────────────────
+function toast(msg, color = 'accent', ms = 3000) {
+  document.querySelector('.toast')?.remove();
+  const el = Object.assign(document.createElement('div'), { className: 'toast', innerHTML: msg });
+  const hex = { green: '#107c10', red: '#d13438', orange: '#f7630c', accent: '#0078d4' };
+  el.style.borderLeft = `3px solid ${hex[color] || hex.accent}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  if (!hasSR) {
+    document.getElementById('browserHint').style.color = 'var(--red)';
+    document.getElementById('browserHint').textContent = '⚠️ Speech recognition not supported — use Chrome or Edge';
+  } else {
+    document.getElementById('browserHint').textContent = '';
+  }
+});
+</script>
+</body>
+</html>
