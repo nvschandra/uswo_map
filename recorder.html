@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VoiceScribe">
+<meta name="theme-color" content="#0078d4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1c1c" media="(prefers-color-scheme: dark)">
 <title>Conversation Recorder</title>
 <style>
 /* ── Design tokens ───────────────────────────────────────────────── */
@@ -403,6 +408,68 @@ canvas#viz { width: 100%; height: 100%; display: block; border-radius: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--txt2); }
+
+/* ── iOS hidden (system audio not supported) ─────────────────────── */
+.ios-hidden { display: none !important; }
+
+/* ── Mobile / iPhone ─────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  body { height: 100svh; }
+
+  /* Flip workspace so transcript is on top, controls on bottom */
+  .workspace { flex-direction: column-reverse; }
+
+  /* Transcript panel fills remaining space */
+  .right { flex: 1; min-height: 0; }
+  .transcript-header { padding: 9px 14px; }
+  .transcript-body  { padding: 10px 14px; }
+  .viz-bar          { height: 32px; padding: 4px 14px; }
+  .stats            { padding: 5px 14px; gap: 10px; font-size: 10px; }
+  .btn              { padding: 4px 9px; font-size: 11px; }
+
+  /* Controls panel: compact strip at bottom */
+  .left {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    gap: 10px;
+    overflow: visible;
+  }
+
+  /* Recording row: timer + button + status in one line */
+  .left-record .record-area {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 22px;
+  }
+  .left-record .section-label { display: none; }
+  .left-record .timer { font-size: 22px; letter-spacing: 2px; }
+  .left-record .rec-btn { width: 56px; height: 56px; font-size: 20px; }
+  .left-record .rec-btn.on::before { inset: -5px; }
+
+  /* Source pills: 3 horizontal equal-width cards */
+  .left-source .section-label { display: none; }
+  .left-source .sources { flex-direction: row; }
+  .left-source .src-opt {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 4px;
+    text-align: center;
+  }
+  .left-source .src-icon { font-size: 18px; width: auto; }
+  .left-source .src-name { font-size: 11px; }
+  .left-source .src-desc { display: none; }
+
+  /* Hide settings and callout on mobile (use defaults) */
+  .left-settings { display: none; }
+  .callout       { display: none; }
+}
 </style>
 </head>
 <body>
@@ -426,7 +493,7 @@ canvas#viz { width: 100%; height: 100%; display: block; border-radius: 3px; }
   <div class="left">
 
     <!-- Record -->
-    <div>
+    <div class="left-record">
       <div class="section-label">Recording</div>
       <div class="record-area">
         <div class="timer" id="timer">00:00</div>
@@ -443,7 +510,7 @@ canvas#viz { width: 100%; height: 100%; display: block; border-radius: 3px; }
     </div>
 
     <!-- Source -->
-    <div>
+    <div class="left-source">
       <div class="section-label">Audio Source</div>
       <div class="sources">
         <label class="src-opt active" id="opt-mic">
@@ -474,7 +541,7 @@ canvas#viz { width: 100%; height: 100%; display: block; border-radius: 3px; }
     </div>
 
     <!-- Settings -->
-    <div>
+    <div class="left-settings">
       <div class="section-label">Settings</div>
       <div class="setting">
         <span>Language</span>
@@ -963,9 +1030,22 @@ window.addEventListener('load', () => {
   const hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   if (!hasSR) {
     document.getElementById('browserHint').style.color = 'var(--red)';
-    document.getElementById('browserHint').textContent = '⚠️ Speech recognition not supported — use Chrome or Edge';
+    document.getElementById('browserHint').textContent = '⚠️ Speech recognition not supported — use Chrome, Edge, or Safari';
   } else {
     document.getElementById('browserHint').textContent = '';
+  }
+
+  // iOS Safari doesn't support getDisplayMedia — hide system audio options
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const noDisplayMedia = !navigator.mediaDevices?.getDisplayMedia;
+  if (isIOS || noDisplayMedia) {
+    document.getElementById('opt-sys').classList.add('ios-hidden');
+    document.getElementById('opt-both').classList.add('ios-hidden');
+    document.querySelector('input[value="mic"]').checked = true;
+    document.getElementById('opt-mic').classList.add('active');
+    if (isIOS) {
+      tipEl.innerHTML = '🎤 On iPhone, <strong>Microphone</strong> mode is available. For meeting audio, place your phone near your laptop speakers.';
+    }
   }
 });
 </script>
